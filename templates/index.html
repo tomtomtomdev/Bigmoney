@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bigmoney — IDX Big Money Flow Screener</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2333;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d29922;
+  --orange: #db6d28;
+  --purple: #bc8cff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--green), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header-actions { display: flex; gap: 12px; align-items: center; }
+
+/* Buttons */
+.btn {
+  padding: 8px 20px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all .15s;
+}
+.btn:hover { border-color: var(--accent); background: #1f2937; }
+.btn-primary {
+  background: linear-gradient(135deg, #238636, #2ea043);
+  border-color: #238636;
+  font-weight: 600;
+}
+.btn-primary:hover { background: linear-gradient(135deg, #2ea043, #3fb950); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px 8px;
+}
+.btn-icon:hover { color: var(--text); }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 200;
+  justify-content: center;
+  align-items: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 480px;
+  max-width: 90vw;
+}
+.modal h2 { margin-bottom: 16px; font-size: 18px; }
+.modal label { display: block; margin-bottom: 6px; color: var(--text2); font-size: 13px; }
+.modal input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: monospace;
+}
+.modal input[type="text"]:focus { outline: none; border-color: var(--accent); }
+.modal-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+.token-status { font-size: 12px; color: var(--text2); margin-top: 8px; }
+.token-status.ok { color: var(--green); }
+
+/* Progress */
+.progress-container {
+  display: none;
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.progress-container.active { display: block; }
+.progress-bar-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  border-radius: 3px;
+  width: 0%;
+  transition: width .3s;
+}
+.progress-text { font-size: 13px; color: var(--text2); margin-top: 6px; }
+
+/* Content */
+.content { padding: 24px; max-width: 1600px; margin: 0 auto; }
+
+/* Stats bar */
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  min-width: 140px;
+}
+.stat-card .label { font-size: 12px; color: var(--text2); }
+.stat-card .value { font-size: 22px; font-weight: 700; }
+
+/* Table */
+.table-container {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+thead th {
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--surface2);
+  color: var(--text2);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+thead th:hover { color: var(--accent); }
+thead th.sorted-asc::after { content: " \u25B2"; color: var(--accent); }
+thead th.sorted-desc::after { content: " \u25BC"; color: var(--accent); }
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .1s;
+}
+tbody tr:hover { background: var(--surface2); }
+tbody tr.expanded { background: #1a2332; }
+td {
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Score badges */
+.score-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.score-high { background: rgba(63,185,80,.2); color: var(--green); }
+.score-mid { background: rgba(210,153,34,.2); color: var(--yellow); }
+.score-low { background: rgba(248,81,73,.2); color: var(--red); }
+
+/* Flow signal */
+.signal { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.signal-strong { background: rgba(63,185,80,.2); color: var(--green); }
+.signal-accum { background: rgba(88,166,255,.2); color: var(--accent); }
+.signal-dist { background: rgba(219,109,40,.2); color: var(--orange); }
+.signal-down { background: rgba(248,81,73,.2); color: var(--red); }
+.signal-neutral { background: rgba(139,148,158,.2); color: var(--text2); }
+
+/* Detail row */
+.detail-row { display: none; }
+.detail-row.active { display: table-row; }
+.detail-row td { padding: 0; }
+.detail-content {
+  padding: 16px 24px;
+  background: #111820;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+.detail-section h4 {
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+.detail-section ul { list-style: none; }
+.detail-section li {
+  font-size: 12px;
+  padding: 3px 0;
+  color: var(--text2);
+}
+.detail-section li strong { color: var(--text); }
+
+/* Panels */
+.panel {
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.panel-header {
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: var(--surface2);
+}
+.panel-header h3 { font-size: 14px; }
+.panel-header .chevron { transition: transform .2s; font-size: 16px; color: var(--text2); }
+.panel-header.collapsed .chevron { transform: rotate(-90deg); }
+.panel-body { padding: 16px 20px; }
+.panel-body.collapsed { display: none; }
+
+/* Unique contributions */
+.contrib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.contrib-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+.contrib-card .source {
+  font-size: 11px;
+  color: var(--purple);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.contrib-card .ticker {
+  font-weight: 700;
+  color: var(--accent);
+  margin-right: 8px;
+}
+.contrib-card .signal-text { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+/* Academic */
+.academic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.academic-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+.academic-card .ticker { font-weight: 700; color: var(--accent); }
+.academic-card .metric-label { font-size: 11px; color: var(--text2); margin-top: 6px; }
+.academic-card .metric-val { font-size: 13px; color: var(--text); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text2);
+}
+.empty-state h2 { font-size: 24px; color: var(--text); margin-bottom: 8px; }
+.empty-state p { font-size: 14px; max-width: 420px; margin: 0 auto; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header { padding: 12px 16px; }
+  .content { padding: 16px; }
+  .detail-content { grid-template-columns: 1fr; }
+  .stats-bar { flex-direction: column; }
+}
+
+/* Format helpers */
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>Bigmoney</h1>
+  <div class="header-actions">
+    <span id="scanTime" style="font-size:12px;color:var(--text2)"></span>
+    <button class="btn btn-primary" id="scanBtn" onclick="startScan()">Scan Now</button>
+    <button class="btn-icon" onclick="openSettings()" title="Settings">&#9881;</button>
+  </div>
+</div>
+
+<!-- Progress -->
+<div class="progress-container" id="progressContainer">
+  <div class="progress-bar-track">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+  <div class="progress-text" id="progressText">Initializing...</div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>Settings</h2>
+    <label for="tokenInput">Stockbit Bearer Token</label>
+    <input type="text" id="tokenInput" placeholder="Bearer eyJhbGciOiJSUzI1NiIs..." spellcheck="false">
+    <div class="token-status" id="tokenStatus"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveToken()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="content">
+  <!-- Stats bar -->
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <div class="stat-card">
+      <div class="label">Total Stocks</div>
+      <div class="value" id="statTotal">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Score &ge; 50</div>
+      <div class="value pos" id="statHigh">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Avg BM Score</div>
+      <div class="value" id="statAvgBM">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Avg Value Score</div>
+      <div class="value" id="statAvgVal">0</div>
+    </div>
+  </div>
+
+  <!-- Results Table -->
+  <div class="table-container" id="tableContainer" style="display:none">
+    <table>
+      <thead>
+        <tr id="tableHead">
+          <th data-col="rank" data-type="num">#</th>
+          <th data-col="symbol" data-type="str">Ticker</th>
+          <th data-col="name" data-type="str">Name</th>
+          <th data-col="sector" data-type="str">Sector</th>
+          <th data-col="total_score" data-type="num">Total</th>
+          <th data-col="bm_score" data-type="num">BM Score</th>
+          <th data-col="value_score" data-type="num">Value</th>
+          <th data-col="pe" data-type="num">PE</th>
+          <th data-col="pbv" data-type="num">PBV</th>
+          <th data-col="roe" data-type="num">ROE%</th>
+          <th data-col="net_foreign" data-type="num">Foreign Flow</th>
+          <th data-col="top_broker" data-type="str">Top Broker</th>
+          <th data-col="flow_signal" data-type="str">Signal</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Empty state -->
+  <div class="empty-state" id="emptyState">
+    <h2>Welcome to Bigmoney</h2>
+    <p>Configure your Stockbit token in Settings, then click "Scan Now" to find top IDX stock picks based on institutional flow and value metrics.</p>
+  </div>
+
+  <!-- Unique Contributions Panel -->
+  <div class="panel" id="uniquePanel" style="display:none">
+    <div class="panel-header" onclick="togglePanel('unique')">
+      <h3>Unique Contributions — Source-Specific Signals</h3>
+      <span class="chevron">&#9660;</span>
+    </div>
+    <div class="panel-body" id="uniqueBody">
+      <div class="contrib-grid" id="contribGrid"></div>
+    </div>
+  </div>
+
+  <!-- Academic Framework Panel -->
+  <div class="panel" id="academicPanel" style="display:none">
+    <div class="panel-header" onclick="togglePanel('academic')">
+      <h3>Academic Framework — Herding, Lead-Lag & FAM Analysis</h3>
+      <span class="chevron">&#9660;</span>
+    </div>
+    <div class="panel-body" id="academicBody">
+      <div class="academic-grid" id="academicGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let allResults = [];
+let sortCol = 'total_score';
+let sortDir = 'desc';
+
+// ── Settings ──
+
+async function openSettings() {
+  document.getElementById('settingsModal').classList.add('active');
+  const resp = await fetch('/api/settings');
+  const data = await resp.json();
+  const status = document.getElementById('tokenStatus');
+  if (data.has_token) {
+    status.textContent = 'Token configured: ' + data.token;
+    status.className = 'token-status ok';
+  } else {
+    status.textContent = 'No token configured';
+    status.className = 'token-status';
+  }
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('active');
+}
+
+async function saveToken() {
+  const token = document.getElementById('tokenInput').value.trim();
+  if (!token) return;
+  await fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({token})
+  });
+  document.getElementById('tokenInput').value = '';
+  closeSettings();
+}
+
+// Close modal on overlay click
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+
+// ── Scan ──
+
+function startScan() {
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.textContent = 'Scanning...';
+
+  const prog = document.getElementById('progressContainer');
+  prog.classList.add('active');
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressText').textContent = 'Starting scan...';
+
+  const evtSrc = new EventSource('/api/scan');
+
+  evtSrc.addEventListener('progress', function(e) {
+    const d = JSON.parse(e.data);
+    document.getElementById('progressFill').style.width = d.pct + '%';
+    document.getElementById('progressText').textContent = d.message;
+  });
+
+  evtSrc.addEventListener('results', function(e) {
+    const d = JSON.parse(e.data);
+    evtSrc.close();
+    btn.disabled = false;
+    btn.textContent = 'Scan Now';
+    setTimeout(() => prog.classList.remove('active'), 1000);
+    renderResults(d);
+  });
+
+  evtSrc.addEventListener('error', function(e) {
+    let msg = 'Scan failed';
+    try {
+      const d = JSON.parse(e.data);
+      msg = d.message || msg;
+    } catch {}
+    evtSrc.close();
+    btn.disabled = false;
+    btn.textContent = 'Scan Now';
+    document.getElementById('progressText').textContent = 'Error: ' + msg;
+    document.getElementById('progressFill').style.width = '0%';
+    setTimeout(() => prog.classList.remove('active'), 3000);
+  });
+
+  evtSrc.onerror = function() {
+    evtSrc.close();
+    btn.disabled = false;
+    btn.textContent = 'Scan Now';
+    document.getElementById('progressText').textContent = 'Connection lost. Try again.';
+    setTimeout(() => prog.classList.remove('active'), 3000);
+  };
+}
+
+// ── Render ──
+
+function renderResults(data) {
+  allResults = data.results || [];
+  document.getElementById('scanTime').textContent = 'Last scan: ' + (data.scan_time || '');
+
+  if (!allResults.length) {
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('tableContainer').style.display = 'none';
+    document.getElementById('statsBar').style.display = 'none';
+    document.getElementById('uniquePanel').style.display = 'none';
+    document.getElementById('academicPanel').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('tableContainer').style.display = 'block';
+  document.getElementById('statsBar').style.display = 'flex';
+  document.getElementById('uniquePanel').style.display = 'block';
+  document.getElementById('academicPanel').style.display = 'block';
+
+  // Stats
+  const total = allResults.length;
+  const high = allResults.filter(r => r.total_score >= 50).length;
+  const avgBM = (allResults.reduce((s,r) => s + r.bm_score, 0) / total).toFixed(1);
+  const avgVal = (allResults.reduce((s,r) => s + r.value_score, 0) / total).toFixed(1);
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statHigh').textContent = high;
+  document.getElementById('statAvgBM').textContent = avgBM;
+  document.getElementById('statAvgVal').textContent = avgVal;
+
+  renderTable();
+  renderUniqueContributions();
+  renderAcademicFramework();
+}
+
+function renderTable() {
+  // Sort
+  const sorted = [...allResults].sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Update header classes
+  document.querySelectorAll('#tableHead th').forEach(th => {
+    th.classList.remove('sorted-asc', 'sorted-desc');
+    if (th.dataset.col === sortCol) {
+      th.classList.add('sorted-' + sortDir);
+    }
+  });
+
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  sorted.forEach((r, idx) => {
+    // Main row
+    const tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+    tr.onclick = () => toggleDetail(idx);
+
+    const scoreClass = r.total_score >= 60 ? 'score-high' : r.total_score >= 35 ? 'score-mid' : 'score-low';
+    const signalClass = r.flow_signal === 'Strong Uptrend' ? 'signal-strong' :
+                        r.flow_signal === 'Quiet Accumulation' ? 'signal-accum' :
+                        r.flow_signal === 'Distribution Warning' ? 'signal-dist' :
+                        r.flow_signal === 'Confirmed Downtrend' ? 'signal-down' : 'signal-neutral';
+
+    const ff = r.net_foreign;
+    const ffStr = ff >= 1e9 ? (ff/1e9).toFixed(1) + 'B' :
+                  ff >= 1e6 ? (ff/1e6).toFixed(0) + 'M' :
+                  ff <= -1e9 ? (ff/1e9).toFixed(1) + 'B' :
+                  ff <= -1e6 ? (ff/1e6).toFixed(0) + 'M' :
+                  ff.toLocaleString();
+
+    tr.innerHTML = `
+      <td class="num">${r.rank}</td>
+      <td><strong>${r.symbol}</strong></td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${r.name}</td>
+      <td>${r.sector}</td>
+      <td class="num"><span class="score-badge ${scoreClass}">${r.total_score}</span></td>
+      <td class="num">${r.bm_score}</td>
+      <td class="num">${r.value_score}</td>
+      <td class="num">${r.pe ? r.pe.toFixed(1) : '-'}</td>
+      <td class="num">${r.pbv ? r.pbv.toFixed(2) : '-'}</td>
+      <td class="num">${r.roe ? r.roe.toFixed(1) + '%' : '-'}</td>
+      <td class="num ${ff >= 0 ? 'pos' : 'neg'}">${ffStr}</td>
+      <td>${r.top_broker || '-'}</td>
+      <td><span class="signal ${signalClass}">${r.flow_signal}</span></td>
+    `;
+    tbody.appendChild(tr);
+
+    // Detail row
+    const dtr = document.createElement('tr');
+    dtr.className = 'detail-row';
+    dtr.id = 'detail-' + idx;
+    const dtd = document.createElement('td');
+    dtd.colSpan = 13;
+    dtd.innerHTML = buildDetail(r);
+    dtr.appendChild(dtd);
+    tbody.appendChild(dtr);
+  });
+}
+
+function buildDetail(r) {
+  // Breakdown
+  const bmItems = (r.bm_breakdown || []).map(b => `<li>${b}</li>`).join('') || '<li>No big money signals</li>';
+  const valItems = (r.val_breakdown || []).map(b => `<li>${b}</li>`).join('') || '<li>No value signals</li>';
+
+  // Broker
+  const brokerItems = (r.broker_detail || []).map(b => {
+    const cls = b.is_institutional ? 'pos' : '';
+    return `<li><strong class="${cls}">${b.code}</strong> (${b.name}) — Rp${(b.value/1e6).toFixed(0)}M</li>`;
+  }).join('') || '<li>No data</li>';
+
+  // Broker 7D
+  const broker7dItems = (r.broker7d_detail || []).map(b => {
+    const cls = b.is_institutional ? 'pos' : '';
+    return `<li><strong class="${cls}">${b.code}</strong> (${b.name}) — Rp${(b.value/1e6).toFixed(0)}M</li>`;
+  }).join('') || '<li>No data</li>';
+
+  // Performance
+  const perfEntries = Object.entries(r.performance || {});
+  const perfItems = perfEntries.map(([k, v]) => {
+    const cls = v >= 0 ? 'pos' : 'neg';
+    return `<li>${k}: <strong class="${cls}">${v >= 0 ? '+' : ''}${v.toFixed(2)}%</strong></li>`;
+  }).join('') || '<li>No data</li>';
+
+  // Analyst
+  const analyst = r.analyst || {};
+  const analystHtml = analyst.consensus
+    ? `<li>Rating: <strong>${analyst.consensus}</strong></li>
+       <li>Target: <strong>Rp${(analyst.target_price || 0).toLocaleString()}</strong></li>
+       <li>Analysts: ${analyst.num_analysts}</li>`
+    : '<li>No analyst data</li>';
+
+  // Screener hits
+  const screenerItems = Object.entries(r.screener_hits || {}).map(([id, name]) =>
+    `<li>${name}</li>`
+  ).join('') || '<li>None</li>';
+
+  return `
+    <div class="detail-content">
+      <div class="detail-section">
+        <h4>BM Score Breakdown (${r.bm_score}/50)</h4>
+        <ul>${bmItems}</ul>
+        <h4 style="margin-top:12px">Value Score Breakdown (${r.value_score}/50)</h4>
+        <ul>${valItems}</ul>
+      </div>
+      <div class="detail-section">
+        <h4>Top Brokers (Today)</h4>
+        <ul>${brokerItems}</ul>
+        <h4 style="margin-top:12px">Top Brokers (7 Day)</h4>
+        <ul>${broker7dItems}</ul>
+        <h4 style="margin-top:12px">Inst. Concentration</h4>
+        <ul><li><strong>${r.institutional_pct}%</strong> ${r.institutional_pct > 60 ? '(High)' : '(Normal)'}</li></ul>
+      </div>
+      <div class="detail-section">
+        <h4>Price Performance</h4>
+        <ul>${perfItems}</ul>
+        <h4 style="margin-top:12px">Analyst Consensus</h4>
+        <ul>${analystHtml}</ul>
+        <h4 style="margin-top:12px">Screeners Hit</h4>
+        <ul>${screenerItems}</ul>
+      </div>
+    </div>
+  `;
+}
+
+function toggleDetail(idx) {
+  const row = document.getElementById('detail-' + idx);
+  const mainRow = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (row.classList.contains('active')) {
+    row.classList.remove('active');
+    mainRow.classList.remove('expanded');
+  } else {
+    row.classList.add('active');
+    mainRow.classList.add('expanded');
+  }
+}
+
+// ── Sorting ──
+
+document.querySelectorAll('#tableHead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (!col) return;
+    if (sortCol === col) {
+      sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    } else {
+      sortCol = col;
+      sortDir = th.dataset.type === 'num' ? 'desc' : 'asc';
+    }
+    renderTable();
+  });
+});
+
+// ── Panels ──
+
+function togglePanel(name) {
+  const header = document.querySelector(`#${name}Panel .panel-header`);
+  const body = document.getElementById(`${name}Body`);
+  header.classList.toggle('collapsed');
+  body.classList.toggle('collapsed');
+}
+
+// ── Unique Contributions ──
+
+function renderUniqueContributions() {
+  const grid = document.getElementById('contribGrid');
+  grid.innerHTML = '';
+
+  // Collect all contributions from top 20 stocks
+  const top = allResults.slice(0, 20);
+  const contribs = [];
+  top.forEach(r => {
+    (r.unique_contributions || []).forEach(c => {
+      contribs.push({...c, ticker: r.symbol, score: r.total_score});
+    });
+  });
+
+  if (!contribs.length) {
+    grid.innerHTML = '<p style="color:var(--text2)">No unique source signals detected in current scan.</p>';
+    return;
+  }
+
+  // Group by source
+  const bySource = {};
+  contribs.forEach(c => {
+    if (!bySource[c.source]) bySource[c.source] = [];
+    bySource[c.source].push(c);
+  });
+
+  Object.entries(bySource).forEach(([source, items]) => {
+    const card = document.createElement('div');
+    card.className = 'contrib-card';
+    const tickers = items.map(i =>
+      `<span class="ticker">${i.ticker}</span>`
+    ).join('');
+    const signals = [...new Set(items.map(i => i.signal))].map(s =>
+      `<div class="signal-text">${s}</div>`
+    ).join('');
+    card.innerHTML = `
+      <div class="source">${source}</div>
+      <div style="margin-top:6px">${tickers}</div>
+      ${signals}
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ── Academic Framework ──
+
+function renderAcademicFramework() {
+  const grid = document.getElementById('academicGrid');
+  grid.innerHTML = '';
+
+  const top = allResults.slice(0, 15);
+  if (!top.length) return;
+
+  top.forEach(r => {
+    const af = r.academic_framework || {};
+    if (!af.herding_signal) return;
+
+    const card = document.createElement('div');
+    card.className = 'academic-card';
+    card.innerHTML = `
+      <div class="ticker">${r.symbol} <span style="color:var(--text2);font-weight:400;font-size:12px">(Score: ${r.total_score})</span></div>
+      <div class="metric-label">Herding Signal</div>
+      <div class="metric-val">${af.herding_signal}</div>
+      <div class="metric-label">Lead-Lag Analysis</div>
+      <div class="metric-val">${af.lead_lag || '-'}</div>
+      <div class="metric-label">Flow-Adjusted Momentum (FAM)</div>
+      <div class="metric-val ${af.fam >= 0 ? 'pos' : 'neg'}">${af.fam}</div>
+      <div class="metric-label" style="margin-top:4px;font-size:10px">${af.fam_interpretation || ''}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Market structure summary card
+  const msCard = document.createElement('div');
+  msCard.className = 'academic-card';
+  msCard.style.borderColor = 'var(--purple)';
+  msCard.innerHTML = `
+    <div style="color:var(--purple);font-weight:700">Market Structure Context</div>
+    <div class="metric-val" style="margin-top:8px;font-size:12px">
+      ${(top[0]?.academic_framework?.market_structure) || 'Institutional ownership ~93-94% of IDX equity. Avg institutional trade ~136x larger than retail. Foreign share of free-float ~70%.'}
+    </div>
+    <div class="metric-label" style="margin-top:8px">Herding Index Formula (LSV)</div>
+    <div class="metric-val" style="font-family:monospace;font-size:11px">H = |B/(B+S) - p| - E|B/(B+S) - p|</div>
+  `;
+  grid.appendChild(msCard);
+}
+
+// ── Load cached results on page load ──
+
+(async function() {
+  try {
+    const resp = await fetch('/api/results');
+    const data = await resp.json();
+    if (data.results && data.results.length) {
+      renderResults(data);
+    }
+  } catch {}
+})();
+</script>
+</body>
+</html>
